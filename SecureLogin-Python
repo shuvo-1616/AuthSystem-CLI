@@ -1,0 +1,81 @@
+import re
+import json
+import os
+import getpass
+from werkzeug.security import generate_password_hash, check_password_hash
+DB_FILE = "users.json"
+if not os.path.exists(DB_FILE):
+    with open(DB_FILE, 'w') as f:
+        json.dump([], f)
+def is_strong_password(password):
+    if (len(password) >= 8 and
+        re.search(r'[A-Z]', password) and
+        re.search(r'[a-z]', password) and
+        re.search(r'[0-9]', password) and
+        re.search(r'[!@#$%^&*(),.?":{}|<>]', password)):
+        return True
+    return False
+def signup():
+    username = input(" Enter username: ").strip()
+    email = input(" Enter email: ").strip()
+    password = getpass.getpass(" Enter password (hidden): ").strip()
+    confirm = getpass.getpass(" Confirm password: ").strip()
+    if not re.match(r'^\S+@\S+\.\S+$', email):
+        print("❌ Invalid email format!")
+        return
+    if password != confirm:
+        print("❌ Passwords do not match!")
+        return
+    if not is_strong_password(password):
+        print("❌ Weak password! Must include at least 8 characters, uppercase, lowercase, number, and special symbol.")
+        return
+    with open(DB_FILE, 'r') as f:
+        users = json.load(f)
+    for user in users:
+        if user['email'] == email:
+            print("⚠️ This email is already registered!")
+            return
+        if user['username'] == username:
+            print("⚠️ This username is already taken!")
+            return
+    hashed_password = generate_password_hash(password)
+    users.append({
+        'username': username,
+        'email': email,
+        'password': hashed_password
+    })
+    with open(DB_FILE, 'w') as f:
+        json.dump(users, f, indent=4)
+
+    print("✅ Signup successful! You can now login.")
+def login():
+    username = input(" Enter username: ").strip()
+    password = getpass.getpass(" Enter password: ").strip()
+
+    with open(DB_FILE, 'r') as f:
+        users = json.load(f)
+    for user in users:
+        if user['username'] == username:
+            if check_password_hash(user['password'], password):
+                print(f"🎉 Welcome, {username}! You have successfully logged in.")
+                return
+            else:
+                print("❌ Incorrect password!")
+                return
+
+    print("❌ Username not found!")
+while True:
+    print("\n--- Login System ---")
+    print("1. Signup (Create a new account)")
+    print("2. Login (Existing user)")
+    print("3. Exit")
+    choice = input("Choose an option (1/2/3): ")
+    if choice == '1':
+        signup()
+    elif choice == '2':
+        login()
+    elif choice == '3':
+        print(" Goodbye!")
+        break
+    else:
+        print("⚠️ Invalid option. Please choose 1, 2, or 3.")
